@@ -106,7 +106,7 @@ static inline void display_update()
         uint8_t ones = ((uint8_t*) &_gpsTime)[i];
         uint8_t tens = 0;
 
-        while (ones > 10) {
+        while (ones >= 10) {
             ones -= 10;
             ++tens;
         }
