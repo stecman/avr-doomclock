@@ -131,6 +131,9 @@ static inline void display_no_signal()
     }
 
     ++waitIndicator;
+    if (waitIndicator == kNumDigits) {
+        waitIndicator = 0;
+    }
 }
 
 int main(void)
