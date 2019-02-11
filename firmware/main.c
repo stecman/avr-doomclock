@@ -14,7 +14,7 @@ static const uint8_t kNumDigits = 6;
 
 static DateTime _gpsTime = {0, 0, 0, 0, 0, 0};
 
-inline void setup_pins()
+static inline void setup_pins()
 {
     // Load/CS pin is active low - initialise as high
     PORTB = _BV(PIN_LOAD);
@@ -22,6 +22,16 @@ inline void setup_pins()
     // MAX7219 pins as output
     // Soft UART and LDR are inputs by omission
     DDRB = _BV(PIN_MOSI) | _BV(PIN_SCK) | _BV(PIN_LOAD);
+}
+
+static inline void setup_adc()
+{
+    // Select PB4 (PIN_LIGHT_SENSE) in the ADC multiplexer
+    // Put the significant 8-bits in the upper register as we only want to read that
+    ADMUX = _BV(MUX1) | _BV(ADLAR);
+
+    // Enable ADC conversions
+    ADCSRA = _BV(ADEN) | _BV(ADSC) | _BV(ADATE);
 }
 
 /**
@@ -64,11 +74,6 @@ static void max7219_cmd(uint8_t address, uint8_t data)
 
 static void max7219_init()
 {
-    // Initialise all digits to be zero
-    for (uint8_t i = 0; i < kNumDigits; ++i) {
-        max7219_cmd(i + 1, 0xFF);
-    }
-
     // Set scan mode to 6 digits
     max7219_cmd(0x0B, kNumDigits);
 
@@ -136,12 +141,64 @@ static inline void display_no_signal()
     }
 }
 
+static inline void display_adjust_brightness()
+{
+    // Map of brightness (index) to minimum ADC reading to trigger
+    // Note the 200mV offset reads as around 10 with this configuration
+    static const __flash uint8_t brightnessTable[] = {
+        30, // 9%  duty cycle
+        40, // 15% duty cycle
+        50, // 21% duty cycle
+        65, // 28% duty cycle
+        80, // 34% duty cycle
+        95, // 40% duty cycle
+        110, // 46% duty cycle
+        125, // 53% duty cycle
+        140, // 59% duty cycle
+        155, // 65% duty cycle
+        170, // 71% duty cycle
+        185, // 78% duty cycle
+        200, // 84% duty cycle
+        215, // 90% duty cycle
+        230, // 96% duty cycle
+    };
+
+    // State to obtain an average of LDR readings
+    // The size of this array should  be a power of two
+    static uint8_t averageBuffer[16] = {};
+    static uint8_t writeIndex = 0;
+    static uint16_t runningTotal = 0;
+
+    // Get the current ADC reading
+    const uint8_t reading = ADCH;
+
+    // Adjust running total with the new value
+    runningTotal -= averageBuffer[writeIndex];
+    runningTotal += reading;
+
+    // Append new reading
+    averageBuffer[writeIndex] = reading;
+    writeIndex = (writeIndex + 1) % sizeof(averageBuffer);
+
+    const uint8_t average = runningTotal/sizeof(averageBuffer);
+
+    uint8_t intensity = 0;
+    while (brightnessTable[intensity] < average) {
+        ++intensity;
+    }
+
+    // Set brightness
+    max7219_cmd(0x0A, intensity);
+}
+
 int main(void)
 {
     setup_pins();
-    max7219_init();
+    setup_adc();
 
+    // Set the display up initially in the no signal state
     display_no_signal();
+    max7219_init();
 
     while (true) {
         // Wait for a line of text from the GPS unit
@@ -183,6 +240,9 @@ int main(void)
                 }
                 break;
         }
+
+        // Update the display brightness for the ambient light level
+        display_adjust_brightness();
     }
 }
 
