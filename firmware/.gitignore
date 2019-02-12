@@ -1,9 +1,6 @@
-# Generated files
-/text.c
-/text.h
-
 # Build outsputs
 *.elf
 *.hex
 *.o
 *.d
+/test/test
