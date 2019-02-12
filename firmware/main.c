@@ -72,6 +72,9 @@ static void max7219_cmd(uint8_t address, uint8_t data)
     PORTB |= _BV(PIN_LOAD);
 }
 
+/**
+ * Configure the MAX7219 for use
+ */
 static void max7219_init()
 {
     // Set scan mode to 6 digits
@@ -82,9 +85,6 @@ static void max7219_init()
 
     // Enable binary decode mode
     max7219_cmd(0x09, 0xFF);
-
-    // Set brightness
-    max7219_cmd(0x0A, 0x0C);
 
     // Enable display
     max7219_cmd(0x0C, 1);
@@ -138,6 +138,17 @@ static inline void display_no_signal()
     ++waitIndicator;
     if (waitIndicator == kNumDigits) {
         waitIndicator = 0;
+    }
+}
+
+static void display_error_code(uint8_t code)
+{
+    max7219_cmd(1, 11 /* E */);
+    max7219_cmd(2, code);
+
+    // Blank other digits
+    for (uint8_t i = 2; i < kNumDigits; ++i) {
+        max7219_cmd(i+1, 0x7F);
     }
 }
 
@@ -196,8 +207,6 @@ int main(void)
     setup_pins();
     setup_adc();
 
-    // Set the display up initially in the no signal state
-    display_no_signal();
     max7219_init();
 
     while (true) {
@@ -220,24 +229,12 @@ int main(void)
                 break;
 
             case kGPS_InvalidChecksum:
-                max7219_cmd(1, 11 /* E */);
-                max7219_cmd(2, 1);
-
-                // Blank other digits
-                for (uint8_t i = 2; i < kNumDigits; ++i) {
-                    max7219_cmd(i+1, 0x7F);
-                }
+                display_error_code(1);
                 break;
 
             case kGPS_BadFormat:
                 // This state is returned if the UART line isn't pulled high (ie. GPS unplugged)
-                max7219_cmd(1, 11 /* E */);
-                max7219_cmd(2, 2);
-
-                // Blank other digits
-                for (uint8_t i = 2; i < kNumDigits; ++i) {
-                    max7219_cmd(i+1, 0x7F);
-                }
+                display_error_code(2);
                 break;
         }
 

@@ -3,7 +3,6 @@
 
 #include <stdbool.h>
 
-
 enum GPRMCField {
     GPRMC_SentenceType = 0,
     GPRMC_Timestamp, // UTC of position fix
@@ -32,24 +31,30 @@ enum NmeaReadState {
  *
  * Note this assumes the input is a two character array, not a null terminated string.
  */
+__attribute__((optimize("unroll-loops")))
 static inline uint8_t hex2int(char* hexPair)
 {
-    uint8_t val = 0;
+    uint8_t output = 0;
 
     for (uint8_t i = 0; i < 2; ++i) {
-        // Get current character then increment
-        uint8_t byte = hexPair[i];
 
-        // Transform hex character to the 4bit equivalent number, using the ascii table indexes
-        if (byte >= '0' && byte <= '9') byte = byte - '0';
-        else if (byte >= 'a' && byte <='f') byte = byte - 'a' + 10;
-        else if (byte >= 'A' && byte <='F') byte = byte - 'A' + 10;
+        // Shift result to make room for next nibble
+        output <<= 4;
 
-        // Shift 4 to make space for new digit, and add the 4 bits of the new digit
-        val = (val << 4) | (byte & 0xF);
+        // Get hex character
+        const uint8_t hexChar = hexPair[i];
+
+        // Transform hex character to the 4bit equivalent number
+        if (hexChar >= '0' && hexChar <= '9') {
+            output |= hexChar - '0';
+
+        } else if (hexChar >= 'A' && hexChar <= 'F') {
+            output |= hexChar - 'A' + 10;
+
+        }
     }
 
-    return val;
+    return output;
 }
 
 /**
@@ -81,10 +86,11 @@ GpsReadStatus gps_read_time(DateTime* output)
     // Which field in the output is currently being written to
     uint8_t outputIndex = 0;
 
-    // RMC sentence matching
-    static const __flash char GPRMC[] = "GPRMC";
+    // RMC sentence header (without null termination)
+    static const __flash char GPRMC[5] = "GPRMC";
     uint8_t typeStrIndex = 0;
 
+    // Initial states for  sentence matching
     enum NmeaReadState state = kSearchStart;
     enum GPRMCField field = GPRMC_SentenceType;
 
@@ -132,7 +138,7 @@ GpsReadStatus gps_read_time(DateTime* output)
 
                 // Try to match against sentence type we want
                 if (byte == GPRMC[typeStrIndex]) {
-                    if (typeStrIndex == 4) {
+                    if (typeStrIndex == (sizeof(GPRMC) - 1)) {
                         // Matched last character in the flag we want
                         state = kReadFields;
                     } else {
@@ -174,7 +180,7 @@ GpsReadStatus gps_read_time(DateTime* output)
                             continue;
                         }
 
-                        // INTENTIONAL FALL THROUGH TO DATETIME
+                        // INTENTIONAL FALL THROUGH TO DATESTAMP
                     }
 
                     case GPRMC_DateStamp: {
