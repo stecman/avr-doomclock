@@ -11,7 +11,7 @@ and extracts the time from that (see`nmea.c`).
 
 - The ATTiny13A lacks SPI and UART peripherals, so these are implemented in software.
 
-Schematic coming soon.
+Schematic and construction details can be found on [this project's hackaday.io page](https://hackaday.io/project/163826-gps-wall-clock).
 
 ## Building and flashing
 
