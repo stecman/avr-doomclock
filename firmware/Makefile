@@ -12,6 +12,8 @@ CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 CFLAGS += -Wl,--relax -mcall-prologues
 CFLAGS += -std=gnu11
 
+.PHONY: test
+
 # symbolic targets:
 all: $(SOURCES) main.hex
 
@@ -28,7 +30,10 @@ all: $(SOURCES) main.hex
 .c.s:
 	$(CFLAGS) -S $< -o $@
 
-flash:	all
+test:
+	$(MAKE) --no-print-directory -C test
+
+flash: all test
 	$(AVRDUDE) -U flash:w:main.hex:i
 
 fuse:
@@ -36,11 +41,12 @@ fuse:
 	@echo "  (default setting with CLKDIV8 unticked)"
 	@echo "  For computing fuse byte values see the fuse bit calculator at http://www.engbedded.com/fusecalc/"
 
-
 clean:
 	find -name '*.d' -exec rm {} +
 	find -name '*.o' -exec rm {} +
 	rm -f main.hex main.elf
+
+	$(MAKE) --no-print-directory -C test clean
 
 # file targets:
 main.elf: $(OBJECTS)

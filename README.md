@@ -27,9 +27,8 @@ make flash
 
 ## Testing
 
-A crude test suite for the NMEA decoding can be run with:
+The simple test suite for NMEA RMC sentence decoding can be run manually with:
 
 ```sh
-cd test
-make
+make test
 ```
