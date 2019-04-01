@@ -9,7 +9,6 @@ CFLAGS = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE)
 CFLAGS += -I -I. -I./lib/
 CFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
-CFLAGS += -Wl,--relax -mcall-prologues
 CFLAGS += -std=gnu11
 
 .PHONY: test
