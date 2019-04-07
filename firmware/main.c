@@ -1,5 +1,6 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <util/delay.h>
 #include <stdbool.h>
 
 #include "softuart.h"
@@ -12,6 +13,7 @@
 
 static const uint8_t kNumDigits = 6;
 
+static int8_t _timezoneOffset = 0;
 static DateTime _gpsTime = {0, 0, 0, 0, 0, 0};
 
 static inline void setup_pins()
@@ -96,7 +98,7 @@ static void max7219_init()
 static inline void display_update()
 {
     // Adjust for NZ timezone (hardcoded for now)
-    _gpsTime.hour += 13;
+    _gpsTime.hour += _timezoneOffset;
     if (_gpsTime.hour > 23) {
         _gpsTime.hour -= 24;
     }
@@ -152,7 +154,38 @@ static void display_error_code(uint8_t code)
     }
 }
 
-static inline void display_adjust_brightness()
+static void display_timezone()
+{
+    uint8_t value;
+
+    // Put sign of timezone in first group
+    if (_timezoneOffset < 0) {
+        max7219_cmd(2, 10 /* - */);
+        value = _timezoneOffset * -1;
+    } else {
+        max7219_cmd(2, 14 /* P */);
+        value = _timezoneOffset;
+    }
+
+    uint8_t ones = value;
+    uint8_t tens = 0;
+
+    while (ones >= 10) {
+        ones -= 10;
+        ++tens;
+    }
+
+    // Put number in the middle
+    max7219_cmd(3, tens);
+    max7219_cmd(4, ones);
+
+    // Blank other digits
+    max7219_cmd(1, 0x7F);
+    max7219_cmd(5, 0x7F);
+    max7219_cmd(6, 0x7F);
+}
+
+static inline void display_adjust_brightness(const uint8_t reading)
 {
     // Map of brightness (index) to minimum ADC reading to trigger
     // Note the 200mV offset reads as around 10 with this configuration
@@ -180,9 +213,6 @@ static inline void display_adjust_brightness()
     static uint8_t writeIndex = 0;
     static uint16_t runningTotal = 0;
 
-    // Get the current ADC reading
-    const uint8_t reading = ADCH;
-
     // Adjust running total with the new value
     runningTotal -= averageBuffer[writeIndex];
     runningTotal += reading;
@@ -200,6 +230,15 @@ static inline void display_adjust_brightness()
 
     // Set brightness
     max7219_cmd(0x0A, intensity);
+}
+
+static void increment_timezone()
+{
+    ++_timezoneOffset;
+
+    if (_timezoneOffset > 13) {
+        _timezoneOffset = -12;
+    }
 }
 
 int main(void)
@@ -238,8 +277,23 @@ int main(void)
                 break;
         }
 
-        // Update the display brightness for the ambient light level
-        display_adjust_brightness();
+        // Handle the combined light sensor and button input
+        {
+            const uint8_t reading = ADCH;
+
+            // The 200mV offset prevents the LDR output dropping below around 10 in an 8-bit reading
+            // When the button is pressed the reading should drop to zero.
+            if (reading < 9) {
+                do {
+                    increment_timezone();
+                    display_timezone();
+                    _delay_ms(500);
+                } while (ADCH < 9);
+            } else {
+                // Update the display brightness for the ambient light level
+                display_adjust_brightness(reading);
+            }
+        }
     }
 }
 
