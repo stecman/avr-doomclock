@@ -97,12 +97,17 @@ static void max7219_init()
  */
 static void display_update()
 {
-    // Adjust for NZ timezone (hardcoded for now)
-    _gpsTime.hour += _timezoneOffset;
-    if (_gpsTime.hour > 23) {
-        _gpsTime.hour -= 24;
+    // Adjust hour for timezone
+    int8_t hour = _gpsTime.hour;
+    hour += _timezoneOffset;
+
+    if (hour > 23) {
+        hour -= 24;
+    } else if (hour < 0) {
+        hour += 24;
     }
 
+    _gpsTime.hour = hour;
     // Send time to display
     uint8_t digit = 1;
 
