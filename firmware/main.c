@@ -95,7 +95,7 @@ static void max7219_init()
 /**
  * Send the current time to the MAX7219 as 6 BCD digits
  */
-static inline void display_update()
+static void display_update()
 {
     // Adjust for NZ timezone (hardcoded for now)
     _gpsTime.hour += _timezoneOffset;
@@ -123,7 +123,7 @@ static inline void display_update()
     }
 }
 
-static inline void display_no_signal()
+static void display_no_signal()
 {
     static uint8_t waitIndicator = 0;
 
@@ -185,7 +185,7 @@ static void display_timezone()
     max7219_cmd(6, 0x7F);
 }
 
-static inline void display_adjust_brightness(const uint8_t reading)
+static void display_adjust_brightness(const uint8_t reading)
 {
     // Map of brightness (index) to minimum ADC reading to trigger
     // Note the 200mV offset reads as around 10 with this configuration
