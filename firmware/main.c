@@ -108,6 +108,7 @@ static void display_update()
     }
 
     _gpsTime.hour = hour;
+
     // Send time to display
     uint8_t digit = 1;
 
@@ -285,15 +286,32 @@ int main(void)
         // Handle the combined light sensor and button input
         {
             const uint8_t reading = ADCH;
+            uint8_t numReads = 0;
 
             // The 200mV offset prevents the LDR output dropping below around 10 in an 8-bit reading
             // When the button is pressed the reading should drop to zero.
-            if (reading < 9) {
-                do {
+            const uint8_t buttonThreshold = 8;
+
+            if (reading < buttonThreshold) {
+                while (ADCH < buttonThreshold) {
+                    ++numReads;
+
+                    // Require the reading to stay below the threshold for a series of readings
+                    // (During real world use the ADC reading was occasionally dipping below the
+                    // threshold without a button press, causing the timezone to increment unexpectedly.
+                    if (numReads <= 5) {
+                        _delay_ms(100);
+                        continue;
+                    }
+
+                    // Reset period counter
+                    numReads = 0;
+
+                    // Update timezone
                     increment_timezone();
                     display_timezone();
-                    _delay_ms(500);
-                } while (ADCH < 9);
+
+                } ;
             } else {
                 // Update the display brightness for the ambient light level
                 display_adjust_brightness(reading);
