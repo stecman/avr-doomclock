@@ -2,14 +2,16 @@
 
 #include <stdint.h>
 
-typedef struct DateTime {
+typedef struct GpsTime {
     uint8_t hour;
     uint8_t minute;
     uint8_t second;
+#ifdef ENABLE_GPS_DATE
     uint8_t day;
     uint8_t month;
     uint8_t year;
-} __attribute__((packed)) DateTime;
+#endif
+} __attribute__((packed)) GpsTime;
 
 typedef enum GpsReadStatus {
     // GPS date and time was successfully read into output parameter
@@ -34,4 +36,4 @@ typedef enum GpsReadStatus {
  * The output parameter may be altered regardless of success/failure. In the case a non-success
  * status is returned, the struct should be considered in an invalid state
  */
-GpsReadStatus gps_read_time(DateTime* output);
+GpsReadStatus gps_read_time(GpsTime* output);

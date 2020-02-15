@@ -61,7 +61,7 @@ static inline uint8_t hex2int(char* hexPair)
  * Convert a two character numeric string to an 8-bit number
  *
  * Using this saves 50 bytes of program space over the stdlib implementation by
- * knowing that str has contains exactly two numeric characters (zero padded if one digit).
+ * knowing that str contains exactly two numeric characters (zero padded if one digit).
  * The AVR stdlib version also uses a 16-bit signed integer, which we don't need.
  */
 static inline uint8_t gps_atoi(char *str)
@@ -74,7 +74,7 @@ static inline uint8_t gps_atoi(char *str)
     return result;
 }
 
-GpsReadStatus gps_read_time(DateTime* output)
+GpsReadStatus gps_read_time(GpsTime* output)
 {
 
     uint8_t calculatedChecksum = 0x0;
@@ -180,10 +180,12 @@ GpsReadStatus gps_read_time(DateTime* output)
                             continue;
                         }
 
+#ifdef ENABLE_GPS_DATE
                         // INTENTIONAL FALL THROUGH TO DATESTAMP
                     }
 
                     case GPRMC_DateStamp: {
+#endif
 
                         // Collect pairs of characters and convert them to numbers
                         buffer[bufIndex] = byte;

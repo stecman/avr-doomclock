@@ -28,7 +28,7 @@ typedef struct TestCase {
     const char* description;
     const char* sentence;
     GpsReadStatus expectedStatus;
-    DateTime expectedResult;
+    GpsTime expectedResult;
 } TestCase;
 
 static TestCase testcases[] = {
@@ -138,7 +138,7 @@ bool assertPasses(TestCase* test, char** errorMsg)
     g_currentSentence = test->sentence;
     g_sentenceIdx = 0;
 
-    DateTime output = {0, 0, 0, 0, 0, 0};
+    GpsTime output = {0, 0, 0, 0, 0, 0};
     GpsReadStatus status = gps_read_time(&output);
 
     // Test return value matches expected value
@@ -156,7 +156,7 @@ bool assertPasses(TestCase* test, char** errorMsg)
     // Test the output matches the expected date and time
     if (test->expectedStatus == kGPS_Success) {
         bool outputMatches = true;
-        for (int i = 0; i < sizeof(DateTime); i++) {
+        for (int i = 0; i < sizeof(GpsTime); i++) {
             if ( ((uint8_t*) &output)[i] != ((uint8_t*) &(test->expectedResult))[i] ) {
                 outputMatches = false;
                 break;

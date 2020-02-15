@@ -14,7 +14,7 @@
 static const uint8_t kNumDigits = 6;
 
 static int8_t _timezoneOffset = 0;
-static DateTime _gpsTime = {0, 0, 0, 0, 0, 0};
+static GpsTime _gpsTime = {0, 0, 0};
 
 static inline void setup_pins()
 {
@@ -129,19 +129,24 @@ static void display_update()
     }
 }
 
+/**
+ * Set all digits on the display to a value with no illuminated segments
+ */
+static void display_clear()
+{
+    for (uint8_t i = kNumDigits; i != 0; --i) {
+        max7219_cmd(i, 0x7F);
+    }
+}
+
 static void display_no_signal()
 {
     static uint8_t waitIndicator = 0;
 
-    for (uint8_t i = 0; i < kNumDigits; ++i) {
-        if (waitIndicator == i) {
-            // Light decimal point
-            max7219_cmd(i + 1, 0x8F);
-        } else {
-            // Blank digit
-            max7219_cmd(i + 1, 0x7F);
-        }
-    }
+    display_clear();
+
+    // Turn on the decimal point on one digit (digits are 1-indexed)
+    max7219_cmd(waitIndicator + 1, 0x8F);
 
     ++waitIndicator;
     if (waitIndicator == kNumDigits) {
@@ -151,17 +156,17 @@ static void display_no_signal()
 
 static void display_error_code(uint8_t code)
 {
+    display_clear();
+
+    // Display error code
     max7219_cmd(1, 11 /* E */);
     max7219_cmd(2, code);
-
-    // Blank other digits
-    for (uint8_t i = 2; i < kNumDigits; ++i) {
-        max7219_cmd(i+1, 0x7F);
-    }
 }
 
 static void display_timezone()
 {
+    display_clear();
+
     uint8_t value;
 
     // Put sign of timezone in first group
@@ -173,6 +178,7 @@ static void display_timezone()
         value = _timezoneOffset;
     }
 
+    // Split value into tens and ones columns manually to save code size
     uint8_t ones = value;
     uint8_t tens = 0;
 
@@ -184,11 +190,15 @@ static void display_timezone()
     // Put number in the middle
     max7219_cmd(3, tens);
     max7219_cmd(4, ones);
+}
 
-    // Blank other digits
-    max7219_cmd(1, 0x7F);
-    max7219_cmd(5, 0x7F);
-    max7219_cmd(6, 0x7F);
+static void increment_timezone()
+{
+    ++_timezoneOffset;
+
+    if (_timezoneOffset > 13) {
+        _timezoneOffset = -12;
+    }
 }
 
 static void display_adjust_brightness(const uint8_t reading)
@@ -236,15 +246,6 @@ static void display_adjust_brightness(const uint8_t reading)
 
     // Set brightness
     max7219_cmd(0x0A, intensity);
-}
-
-static void increment_timezone()
-{
-    ++_timezoneOffset;
-
-    if (_timezoneOffset > 13) {
-        _timezoneOffset = -12;
-    }
 }
 
 int main(void)
@@ -311,7 +312,8 @@ int main(void)
                     increment_timezone();
                     display_timezone();
 
-                } ;
+                }
+
             } else {
                 // Update the display brightness for the ambient light level
                 display_adjust_brightness(reading);
