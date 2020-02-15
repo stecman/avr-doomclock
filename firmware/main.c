@@ -93,12 +93,12 @@ static void max7219_init()
 }
 
 /**
- * Send the current time to the MAX7219 as 6 BCD digits
+ * Modify the passed time with the current timezone offset
  */
-static void display_update()
+static void apply_timezone_offset(GpsTime* now)
 {
     // Adjust hour for timezone
-    int8_t hour = _gpsTime.hour;
+    int8_t hour = now->hour;
     hour += _timezoneOffset;
 
     if (hour > 23) {
@@ -107,8 +107,14 @@ static void display_update()
         hour += 24;
     }
 
-    _gpsTime.hour = hour;
+    now->hour = hour;
+}
 
+/**
+ * Send the current time to the MAX7219 as 6 BCD digits
+ */
+static void display_update(GpsTime* now)
+{
     // Send time to display
     uint8_t digit = 1;
 
@@ -116,7 +122,7 @@ static void display_update()
 
         // Manually digit into tens and ones columns
         // This saves 25 bytes vs. using the divide and modulo operators.
-        uint8_t ones = ((uint8_t*) &_gpsTime)[i];
+        uint8_t ones = ((uint8_t*) now)[i];
         uint8_t tens = 0;
 
         while (ones >= 10) {
@@ -257,12 +263,13 @@ int main(void)
 
     while (true) {
         // Wait for a line of text from the GPS unit
-        GpsReadStatus status = gps_read_time(&_gpsTime);
+        const GpsReadStatus status = gps_read_time(&_gpsTime);
 
         switch (status) {
             case kGPS_Success:
                 // Update the display with the new parsed time
-                display_update();
+                apply_timezone_offset(&_gpsTime);
+                display_update(&_gpsTime);
                 break;
 
             case kGPS_NoMatch:
