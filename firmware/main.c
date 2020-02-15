@@ -175,16 +175,19 @@ static void display_timezone()
 {
     display_clear();
 
+    // Put sign of timezone in the hours column
+    uint8_t prefix;
     uint8_t value;
 
-    // Put sign of timezone in first group
     if (_timezoneOffset < 0) {
-        max7219_cmd(2, 10 /* - */);
+        prefix = 10; /* - */
         value = _timezoneOffset * -1;
     } else {
-        max7219_cmd(2, 14 /* P */);
+        prefix = 14; /* P */
         value = _timezoneOffset;
     }
+
+    max7219_cmd(2, prefix);
 
     // Split value into tens and ones columns manually to save code size
     uint8_t ones = value;
