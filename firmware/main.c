@@ -211,10 +211,10 @@ static void increment_timezone()
 
 static void restore_timezone()
 {
-    uint8_t timezone = eeprom_read_byte(EEPROM_TIMEZONE_ADDR);
+    const int8_t timezone = eeprom_read_byte(EEPROM_TIMEZONE_ADDR);
 
     // Restore if the value read from eeprom looks like a timezone
-    if (timezone >= -12 || timezone <= 13) {
+    if (timezone >= -12 && timezone <= 13) {
         _timezoneOffset = timezone;
     }
 }
