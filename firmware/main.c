@@ -1,3 +1,4 @@
+#include <avr/eeprom.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
@@ -11,6 +12,7 @@
 #define PIN_LOAD PB3
 #define PIN_LIGHT_SENSE PB4
 
+static const uint8_t* EEPROM_TIMEZONE_ADDR = 0;
 static const uint8_t kNumDigits = 6;
 
 static int8_t _timezoneOffset = 0;
@@ -207,6 +209,16 @@ static void increment_timezone()
     }
 }
 
+static void restore_timezone()
+{
+    uint8_t timezone = eeprom_read_byte(EEPROM_TIMEZONE_ADDR);
+
+    // Restore if the value read from eeprom looks like a timezone
+    if (timezone >= -12 || timezone <= 13) {
+        _timezoneOffset = timezone;
+    }
+}
+
 static void display_adjust_brightness(const uint8_t reading)
 {
     // Map of brightness (index) to minimum ADC reading to trigger
@@ -261,6 +273,8 @@ int main(void)
 
     max7219_init();
 
+    restore_timezone();
+
     while (true) {
         // Wait for a line of text from the GPS unit
         const GpsReadStatus status = gps_read_time(&_gpsTime);
@@ -301,6 +315,8 @@ int main(void)
             const uint8_t buttonThreshold = 8;
 
             if (reading < buttonThreshold) {
+                const int8_t oldTimezone = _timezoneOffset;
+
                 while (ADCH < buttonThreshold) {
                     ++numReads;
 
@@ -319,6 +335,11 @@ int main(void)
                     increment_timezone();
                     display_timezone();
 
+                }
+
+                // Persist the timezone if it was changed
+                if (oldTimezone != _timezoneOffset) {
+                    eeprom_write_byte(EEPROM_TIMEZONE_ADDR, _timezoneOffset);
                 }
 
             } else {
