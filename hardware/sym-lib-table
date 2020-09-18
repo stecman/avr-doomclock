@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name localparts)(type Legacy)(uri ${KIPRJMOD}/localparts.lib)(options "")(descr ""))
+  (lib (name doom-clock-rescue)(type Legacy)(uri ${KIPRJMOD}/doom-clock-rescue.lib)(options "")(descr ""))
+)
