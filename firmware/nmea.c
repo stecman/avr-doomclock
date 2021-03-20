@@ -210,17 +210,16 @@ GpsReadStatus gps_read_time(GpsTime* output)
             }
 
             case kChecksumVerify: {
-                uint8_t receivedChecksum = 0x0;
 
                 // Collect checksum
                 buffer[bufIndex] = byte;
                 bufIndex++;
 
-                if (bufIndex == 2) {
-                    receivedChecksum = hex2int(buffer);
-                } else {
+                if (bufIndex < 2) {
                     continue;
                 }
+
+                const uint8_t receivedChecksum = hex2int(buffer);
 
                 if (receivedChecksum == calculatedChecksum) {
                     if (sawTimeFields) {
