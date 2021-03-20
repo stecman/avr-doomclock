@@ -86,6 +86,11 @@ static TestCase testcases[] = {
         },
     },
     {
+        .description = "Message with no time data is recognised as no signal",
+        .sentence = "$GPRMC,,V,,,,,,,,,,N*53\r\n",
+        .expectedStatus = kGPS_NoSignal,
+    },
+    {
         .description = "Invalid checksum fails",
         .sentence = "$GPRMC,220516,A,5133.82,N,00042.24,W,173.8,231.8,130694,004.2,W*14\r\n",
         .expectedStatus = kGPS_InvalidChecksum,
