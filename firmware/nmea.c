@@ -68,8 +68,8 @@ static inline uint8_t gps_atoi(char *str)
 {
     uint8_t result = 0;
 
-    result = (result * 10) + str[0] - '0';
-    result = (result * 10) + str[1] - '0';
+    result = (str[0] - '0') * 10; // Tens
+    result += str[1] - '0'; // Ones
 
     return result;
 }
