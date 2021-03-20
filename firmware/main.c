@@ -45,15 +45,18 @@ static void spi_send(uint8_t byte)
 {
     // Clock out 8 bits, MSB first
     for (uint8_t i = 8; i != 0; --i) {
+        // Bring the clock low
         PORTB &= ~_BV(PIN_SCK);
 
+        // Set output to 0
+        PORTB &= ~_BV(PIN_MOSI);
+
+        // Set output to 1 if this bit is set
         if (byte & 0x80) {
             PORTB |= _BV(PIN_MOSI);
-        } else {
-            PORTB &= ~_BV(PIN_MOSI);
         }
 
-        // Clock out
+        // Bring clock high to send bit
         PORTB |= _BV(PIN_SCK);
 
         // Next bit
