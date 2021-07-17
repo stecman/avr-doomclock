@@ -12,8 +12,8 @@
 #define PIN_LOAD PB3
 #define PIN_LIGHT_SENSE PB4
 
-static const uint8_t* EEPROM_TIMEZONE_ADDR = 0;
-static const uint8_t kNumDigits = 6;
+#define EEPROM_TIMEZONE_ADDR ((uint8_t*) 0)
+#define kNumDigits 6
 
 static int8_t _timezoneOffset = 0;
 static GpsTime _gpsTime = {0, 0, 0};
