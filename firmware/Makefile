@@ -38,8 +38,8 @@ flash: all test
 	$(AVRDUDE) -U flash:w:main.hex:i
 
 fuse:
-	@echo "  Fuse with -U lfuse:w:0x7a:m -U hfuse:w:0xf9:m"
-	@echo "  (default setting with CLKDIV8 unticked)"
+	@echo "  Fuse with: avrdude -p t13 -c dragon_isp -U lfuse:w:0x3a:m -U hfuse:w:0xfb:m"
+	@echo "  (default setting with CLKDIV8 unticked and EESAVE enabled)"
 	@echo "  For computing fuse byte values see the fuse bit calculator at http://www.engbedded.com/fusecalc/"
 
 clean:
