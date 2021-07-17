@@ -329,8 +329,8 @@ int main(void)
                     // Require the reading to stay below the threshold for a series of readings
                     // (During real world use the ADC reading was occasionally dipping below the
                     // threshold without a button press, causing the timezone to increment unexpectedly.
-                    if (numReads <= 5) {
-                        _delay_ms(100);
+                    if (numReads <= 20) {
+                        _delay_ms(25);
                         continue;
                     }
 
