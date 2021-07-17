@@ -58,6 +58,15 @@ static inline uint8_t hex2int(char* hexPair)
 }
 
 /**
+ * Multiply by 10 without multiply instructions
+ * This saves a little program space over (val * 10), which links in __mulqi3
+ */
+static inline uint8_t multiply_by_10(uint8_t val)
+{
+    return (val << 3) + (val << 1);
+}
+
+/**
  * Convert a two character numeric string to an 8-bit number
  *
  * Using this saves 50 bytes of program space over the stdlib implementation by
@@ -68,7 +77,7 @@ static inline uint8_t gps_atoi(char *str)
 {
     uint8_t result = 0;
 
-    result = (str[0] - '0') * 10; // Tens
+    result = multiply_by_10(str[0] - '0'); // Tens
     result += str[1] - '0'; // Ones
 
     return result;

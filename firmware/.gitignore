@@ -1,6 +1,7 @@
 # Build outsputs
 *.elf
 *.hex
+*.map
 *.o
 *.d
 /test/test

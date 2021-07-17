@@ -1,7 +1,7 @@
 DEVICE     = attiny13a
 CLOCK      = 9600000
 PROGRAMMER = -c dragon_isp -B 125kHz
-SOURCES    = main.c nmea.c softuart.c
+SOURCES    = startup.S main.c nmea.c softuart.c
 OBJECTS    = $(SOURCES:.c=.o)
 
 AVRDUDE = avrdude $(PROGRAMMER) -p t13
@@ -10,6 +10,8 @@ CFLAGS += -I -I. -I./lib/
 CFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 CFLAGS += -std=gnu11
+CFLAGS += -Xlinker -Map=main.map # Generate linker map file
+CFLAGS += -nostartfiles # Use custom startup code
 
 .PHONY: test
 

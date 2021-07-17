@@ -41,10 +41,10 @@ static inline void setup_adc()
 /**
  * Clock out a byte to the MAX7219 (SPI-like)
  */
-static void spi_send(uint8_t byte)
+static void spi_send_16(uint16_t value)
 {
     // Clock out 8 bits, MSB first
-    for (uint8_t i = 8; i != 0; --i) {
+    for (uint8_t i = 16; i != 0; --i) {
         // Bring the clock low
         PORTB &= ~_BV(PIN_SCK);
 
@@ -52,7 +52,7 @@ static void spi_send(uint8_t byte)
         PORTB &= ~_BV(PIN_MOSI);
 
         // Set output to 1 if this bit is set
-        if (byte & 0x80) {
+        if (value & 0x8000) {
             PORTB |= _BV(PIN_MOSI);
         }
 
@@ -60,7 +60,7 @@ static void spi_send(uint8_t byte)
         PORTB |= _BV(PIN_SCK);
 
         // Next bit
-        byte <<= 1;
+        value <<= 1;
     }
 }
 
@@ -72,8 +72,8 @@ static void max7219_cmd(uint8_t address, uint8_t data)
     // Select chip (active low)
     PORTB &= ~_BV(PIN_LOAD);
 
-    spi_send(address);
-    spi_send(data);
+    // Clock out address and data as a combined word for code size savings
+    spi_send_16((address << 8) | data);
 
     // Pull chip select high to latch data
     PORTB |= _BV(PIN_LOAD);
