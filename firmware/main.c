@@ -304,7 +304,7 @@ static void display_adjust_brightness(const uint8_t reading)
     const uint8_t average = runningTotal/sizeof(averageBuffer);
 
     uint8_t intensity = 0;
-    while (brightnessTable[intensity] < average) {
+    while (intensity < sizeof(brightnessTable) && brightnessTable[intensity] < average) {
         ++intensity;
     }
 
