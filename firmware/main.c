@@ -1,4 +1,3 @@
-#include <avr/eeprom.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
@@ -12,7 +11,7 @@
 #define PIN_LOAD PB3
 #define PIN_LIGHT_SENSE PB4
 
-#define EEPROM_TIMEZONE_ADDR ((uint8_t*) 0)
+#define EEPROM_TIMEZONE_ADDR 0
 #define kNumDigits 6
 
 static int8_t _timezoneOffset = 0;
@@ -36,6 +35,45 @@ static inline void setup_adc()
 
     // Enable ADC conversions
     ADCSRA = _BV(ADEN) | _BV(ADSC) | _BV(ADATE);
+}
+
+__attribute__ ((unused))
+static void eeprom_wait_for_write()
+{
+    while(EECR & (1<<EEPE));
+}
+
+static void unchecked_eeprom_write(uint8_t address, uint8_t data)
+{
+    // Note: this doesn't wait for completion of any previous write
+    // This is a code size optimisation as we only write a single byte infrequently
+
+    // Set Programming mode
+    EECR = (0 << EEPM1) | (0 >> EEPM0);
+
+    // Set up address and data registers
+    EEARL = address;
+    EEDR = data;
+
+    // Write logical one to EEMPE
+    EECR |= (1 << EEMPE);
+    // Start eeprom write by setting EEPE
+    EECR |= (1 << EEPE);
+}
+
+static uint8_t unchecked_eeprom_read(uint8_t address)
+{
+    // Note: this doesn't wait for completion of any previous write
+    // This is a code size optimisation as we only read at start-up, before any writes
+
+    // Set up address register
+    EEARL = address;
+
+    // Start eeprom read by writing EERE
+    EECR |= (1 << EERE);
+
+    // Return data from data register
+    return EEDR;
 }
 
 /**
@@ -217,7 +255,7 @@ static void increment_timezone()
 
 static void restore_timezone()
 {
-    const int8_t timezone = eeprom_read_byte(EEPROM_TIMEZONE_ADDR);
+    const int8_t timezone = unchecked_eeprom_read(EEPROM_TIMEZONE_ADDR);
 
     // Restore if the value read from eeprom looks like a timezone
     if (timezone >= -12 && timezone <= 13) {
@@ -345,7 +383,7 @@ int main(void)
 
                 // Persist the timezone if it was changed
                 if (oldTimezone != _timezoneOffset) {
-                    eeprom_write_byte(EEPROM_TIMEZONE_ADDR, _timezoneOffset);
+                    unchecked_eeprom_write(EEPROM_TIMEZONE_ADDR, _timezoneOffset);
                 }
 
             } else {
