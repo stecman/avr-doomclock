@@ -10,7 +10,7 @@
 /**
  * Read a single byte transmitted by the GPS
  */
-uint8_t uart_read_byte()
+AVRSTATIC uint8_t uart_read_byte()
 {
     uint8_t data = 0x0;
 

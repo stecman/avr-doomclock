@@ -4,4 +4,4 @@
 
 #define PIN_SOFT_RX PB1
 
-uint8_t uart_read_byte();
+AVRSTATIC uint8_t uart_read_byte();

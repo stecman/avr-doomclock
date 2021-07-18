@@ -83,7 +83,7 @@ static inline uint8_t gps_atoi(char *str)
     return result;
 }
 
-GpsReadStatus gps_read_time(GpsTime* output)
+AVRSTATIC GpsReadStatus gps_read_time(GpsTime* output)
 {
 
     uint8_t calculatedChecksum = 0x0;

@@ -3,8 +3,10 @@
 #include <util/delay.h>
 #include <stdbool.h>
 
-#include "softuart.h"
-#include "nmea.h"
+// Include sources directly so the compiler can optimise everything together
+// This saves a significant amount of code space
+#include "softuart.c"
+#include "nmea.c"
 
 #define PIN_MOSI PB0
 #define PIN_SCK PB2
@@ -77,7 +79,7 @@ static uint8_t unchecked_eeprom_read(uint8_t address)
 }
 
 /**
- * Clock out a byte to the MAX7219 (SPI-like)
+ * Clock out a command and data pair to the MAX7219 (SPI-like)
  */
 static void spi_send_16(uint16_t value)
 {

@@ -36,4 +36,4 @@ typedef enum GpsReadStatus {
  * The output parameter may be altered regardless of success/failure. In the case a non-success
  * status is returned, the struct should be considered in an invalid state
  */
-GpsReadStatus gps_read_time(GpsTime* output);
+AVRSTATIC GpsReadStatus gps_read_time(GpsTime* output);

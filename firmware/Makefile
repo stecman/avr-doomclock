@@ -1,7 +1,7 @@
 DEVICE     = attiny13a
 CLOCK      = 9600000
 PROGRAMMER = -c dragon_isp -B 125kHz
-SOURCES    = startup.S main.c nmea.c softuart.c
+SOURCES    = startup.S main.c
 OBJECTS    = $(SOURCES:.c=.o)
 
 AVRDUDE = avrdude $(PROGRAMMER) -p t13
@@ -12,6 +12,11 @@ CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 CFLAGS += -std=gnu11
 CFLAGS += -Xlinker -Map=main.map # Generate linker map file
 CFLAGS += -nostartfiles # Use custom startup code
+
+
+# Force some functions to be static for code size optimisation
+# This needs to be an option so the test suite can still use the code
+CFLAGS += -DAVRSTATIC=static
 
 .PHONY: test
 
