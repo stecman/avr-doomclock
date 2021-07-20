@@ -37,8 +37,15 @@ static inline void setup_adc()
     // Put the significant 8-bits in the upper register as we only want to read that
     ADMUX = _BV(MUX1) | _BV(ADLAR);
 
-    // Enable ADC conversions
-    ADCSRA = _BV(ADEN) | _BV(ADSC) | _BV(ADATE);
+    // Enable free-running ADC conversions with largest prescaler
+    ADCSRA = _BV(ADATE) | _BV(ADEN) | _BV(ADSC)
+        | _BV(ADPS0) | _BV(ADPS1) | _BV(ADPS2);
+}
+
+static inline void setup_timer()
+{
+    // Run TIM0 with 1024 prescaler
+    TCCR0B = _BV(CS00) | _BV(CS02);
 }
 
 __attribute__ ((unused))
@@ -155,6 +162,25 @@ static void apply_timezone_offset(GpsTime* now)
     }
 
     now->hour = hour;
+}
+
+static inline void set_display_pending_flag()
+{
+    // Re-purpose an unused register for single instruction set/clear
+    // This "input buffer disable register" bit isn't functional as PB0 is always an output
+    DIDR0 |= _BV(AIN0D);
+}
+
+static inline uint8_t is_display_pending()
+{
+    // See set_display_pending_flag for what's going on here
+    return DIDR0 & _BV(AIN0D);
+}
+
+static inline void clear_display_pending_flag()
+{
+    // See set_display_pending_flag for what's going on here
+    DIDR0 &= ~_BV(AIN0D);
 }
 
 static inline void display_buffer_set(uint8_t index, uint8_t value)
@@ -343,64 +369,49 @@ static void display_adjust_brightness(const uint8_t reading)
     max7219_cmd(0x0A, intensity);
 }
 
-static void wait_for_timepulse()
+static bool wait_for_timepulse()
 {
     // Switch LOAD/CS pin to input with pull-up
     // The timepulse signal is wired to pull this line low
     DDRB &= ~_BV(PIN_LOAD);
 
-    // Wait for timepulse to pull the line low
-    while ((PINB & _BV(PIN_LOAD)));
+    // Clear pin change flag
+    GIFR |= _BV(PCIF);
+
+    // Wait for a UART or Timepulse to change - whichever comes first
+    while ((GIFR & _BV(PCIF)) == 0);
+
+    // Abort display update if timepulse wasn't responsible
+    bool is_timepulse = (PINB & _BV(PIN_LOAD)) == 0;
 
     // Set LOAD/CS back to output idling high
     DDRB |= _BV(PIN_LOAD);
+
+    return is_timepulse;
 }
 
 int main(void)
 {
+    // Flag state changes on the UART and Timepulse pins
+    // Interrupts aren't used, but the interrupt flags are read
+    PCMSK = _BV(PIN_SOFT_RX) | _BV(PIN_LOAD);
+
     setup_pins();
     setup_adc();
+    setup_timer();
 
     max7219_init();
 
     restore_timezone();
 
     while (true) {
+
         // Wait for a line of text from the GPS unit
         const GpsReadStatus status = gps_read_time(&_gpsTime);
 
-        switch (status) {
-            case kGPS_Success:
-                // Update the display with the new parsed time
-                apply_timezone_offset(&_gpsTime);
-                increment_time(&_gpsTime);
-                display_buffer_update(&_gpsTime);
-                wait_for_timepulse();
-                break;
-
-            case kGPS_NoMatch:
-                // Ignore partial and unknown sentences
-                break;
-
-            case kGPS_NoSignal:
-                // Walk the decimal point across the display to indicate activity
-                display_no_signal();
-                break;
-
-            case kGPS_InvalidChecksum:
-                display_error_code(1);
-                break;
-
-            case kGPS_BadFormat:
-                // This state is returned if the UART line isn't pulled high (ie. GPS unplugged)
-                display_error_code(2);
-                break;
-        }
-
-        display_buffer_send();
 
         // Handle the combined light sensor and button input
-        {
+        if (status != kGPS_Success) {
             const uint8_t reading = ADCH;
             uint8_t numReads = 0;
 
@@ -428,7 +439,7 @@ int main(void)
                     // Update timezone
                     increment_timezone();
                     display_timezone();
-
+                    display_buffer_send();
                 }
 
                 // Persist the timezone if it was changed
@@ -441,6 +452,46 @@ int main(void)
                 display_adjust_brightness(reading);
             }
         }
+
+
+        // Handle the processed message from the GPS module
+        // This is done last as it blocks to sync with the timepulse signal
+        switch (status) {
+            case kGPS_Success:
+                // Update the display with the new parsed time
+                apply_timezone_offset(&_gpsTime);
+                increment_time(&_gpsTime);
+                display_buffer_update(&_gpsTime);
+
+                if (!wait_for_timepulse()) {
+                    // UART interrupted - process that first
+                    continue;
+                }
+
+                set_display_pending_flag();
+
+                break;
+
+            case kGPS_NoMatch:
+                // Ignore partial and unknown sentences
+                continue;
+
+            case kGPS_NoSignal:
+                // Walk the decimal point across the display to indicate activity
+                display_no_signal();
+                break;
+
+            case kGPS_InvalidChecksum:
+                display_error_code(1);
+                break;
+
+            case kGPS_BadFormat:
+                // This state is returned if the UART line isn't pulled high (ie. GPS unplugged)
+                display_error_code(2);
+                break;
+        }
+
+        display_buffer_send();
     }
 }
 
