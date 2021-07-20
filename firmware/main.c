@@ -19,6 +19,8 @@
 static int8_t _timezoneOffset = 0;
 static GpsTime _gpsTime = {0, 0, 0};
 
+static uint8_t _display_buf[kNumDigits];
+
 static inline void setup_pins()
 {
     // Load/CS pin is active low - initialise as high
@@ -155,13 +157,18 @@ static void apply_timezone_offset(GpsTime* now)
     now->hour = hour;
 }
 
+static inline void display_buffer_set(uint8_t index, uint8_t value)
+{
+    _display_buf[index] = value;
+}
+
 /**
  * Send the current time to the MAX7219 as 6 BCD digits
  */
-static void display_update(GpsTime* now)
+static void display_buffer_update(GpsTime* now)
 {
     // Send time to display
-    uint8_t digit = 1;
+    uint8_t digit = 0;
 
     for (int8_t i = 0; i < 3; ++i) {
 
@@ -175,8 +182,16 @@ static void display_update(GpsTime* now)
             ++tens;
         }
 
-        max7219_cmd(digit++, tens);
-        max7219_cmd(digit++, ones);
+        display_buffer_set(digit++, tens);
+        display_buffer_set(digit++, ones);
+    }
+}
+
+static void display_buffer_send()
+{
+    for (int8_t i = kNumDigits; i != 0; --i) {
+        // Send buffer values to 1-indexed digit addresses
+        max7219_cmd(i, _display_buf[i-1]);
     }
 }
 
@@ -186,7 +201,7 @@ static void display_update(GpsTime* now)
 static void display_clear()
 {
     for (uint8_t i = kNumDigits; i != 0; --i) {
-        max7219_cmd(i, 0x7F);
+        _display_buf[i] = 0x7F;
     }
 }
 
@@ -196,8 +211,8 @@ static void display_no_signal()
 
     display_clear();
 
-    // Turn on the decimal point on one digit (digits are 1-indexed)
-    max7219_cmd(waitIndicator + 1, 0x8F);
+    // Turn on the decimal point on one digit
+    display_buffer_set(waitIndicator, 0x8F);
 
     ++waitIndicator;
     if (waitIndicator == kNumDigits) {
@@ -210,27 +225,24 @@ static void display_error_code(uint8_t code)
     display_clear();
 
     // Display error code
-    max7219_cmd(1, 11 /* E */);
-    max7219_cmd(2, code);
+    display_buffer_set(0, 11 /* E */);
+    display_buffer_set(1, code);
 }
 
 static void display_timezone()
 {
     display_clear();
 
-    // Put sign of timezone in the hours column
-    uint8_t prefix;
     uint8_t value;
 
+    // Put sign of timezone in the hours column
     if (_timezoneOffset < 0) {
-        prefix = 10; /* - */
+        display_buffer_set(1, 10 /* - */);
         value = _timezoneOffset * -1;
     } else {
-        prefix = 14; /* P */
+        display_buffer_set(1, 14 /* P */);
         value = _timezoneOffset;
     }
-
-    max7219_cmd(2, prefix);
 
     // Split value into tens and ones columns manually to save code size
     uint8_t ones = value;
@@ -242,8 +254,8 @@ static void display_timezone()
     }
 
     // Put number in the middle
-    max7219_cmd(3, tens);
-    max7219_cmd(4, ones);
+    display_buffer_set(2, tens);
+    display_buffer_set(3, ones);
 }
 
 static void increment_timezone()
@@ -252,6 +264,25 @@ static void increment_timezone()
 
     if (_timezoneOffset > 13) {
         _timezoneOffset = -12;
+    }
+}
+
+void increment_time(GpsTime* tim)
+{
+    ++tim->second;
+
+    if (tim->second == 60) {
+        tim->second = 0;
+        ++tim->minute;
+    }
+
+    if (tim->minute == 60) {
+        tim->minute = 0;
+        ++tim->hour;
+    }
+
+    if (tim->hour == 24) {
+        tim->hour = 0;
     }
 }
 
@@ -312,6 +343,19 @@ static void display_adjust_brightness(const uint8_t reading)
     max7219_cmd(0x0A, intensity);
 }
 
+static void wait_for_timepulse()
+{
+    // Switch LOAD/CS pin to input with pull-up
+    // The timepulse signal is wired to pull this line low
+    DDRB &= ~_BV(PIN_LOAD);
+
+    // Wait for timepulse to pull the line low
+    while ((PINB & _BV(PIN_LOAD)));
+
+    // Set LOAD/CS back to output idling high
+    DDRB |= _BV(PIN_LOAD);
+}
+
 int main(void)
 {
     setup_pins();
@@ -329,7 +373,9 @@ int main(void)
             case kGPS_Success:
                 // Update the display with the new parsed time
                 apply_timezone_offset(&_gpsTime);
-                display_update(&_gpsTime);
+                increment_time(&_gpsTime);
+                display_buffer_update(&_gpsTime);
+                wait_for_timepulse();
                 break;
 
             case kGPS_NoMatch:
@@ -350,6 +396,8 @@ int main(void)
                 display_error_code(2);
                 break;
         }
+
+        display_buffer_send();
 
         // Handle the combined light sensor and button input
         {
