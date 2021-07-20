@@ -53,8 +53,8 @@ __do_clear_bss:
 
 .section .init9,"ax",@progbits
 
-// Start the program, which will run forever
+// Jump to the program, which will run forever
 // This saves a couple of instructions from the default startup code that allows
 // the program to "exit" and go into an infinite loop. We know our main() function
 // will never return, so there's no need for this
-rcall main
+rjmp main
