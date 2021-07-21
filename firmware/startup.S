@@ -36,6 +36,9 @@ __vectors:
 // This is normally provided by GCC, but with -nostartfiles we need to provide it
 // (Borrowed from libgcc/config/avr/lib1funcs.S)
 __init:
+	// Clear the zero register
+	eor	__zero_reg__, __zero_reg__
+
 __do_clear_bss:
 	ldi	r18, hi8(__bss_end)
 	ldi	r26, lo8(__bss_start)
