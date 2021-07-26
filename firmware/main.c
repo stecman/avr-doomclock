@@ -226,7 +226,8 @@ static void display_buffer_send()
  */
 static void display_clear()
 {
-    for (uint8_t i = kNumDigits; i != 0; --i) {
+    // Reverse loop to save an instruction as the order doesn't matter
+    for (int8_t i = kNumDigits - 1; i >= 0; --i) {
         _display_buf[i] = 0x7F;
     }
 }
